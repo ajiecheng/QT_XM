@@ -40,7 +40,7 @@ private:
 
     QMutex m_mutex;
     int    m_maxConnections = 8;     // 连接上限（配合后面固定 8 线程）
-    qint64 m_maxIdleMs = 60 * 1000;      // ← 新增：空闲超时，默认 60 秒
+    qint64 m_maxIdleMs = 7LL * 3600 * 1000;      // ← 新增：空闲超时，默认 60 秒
     // 登记表：连接名 -> 最近一次 release 的时刻（0 = 正在使用中）
     // 用自己这张表统计数量，而不是 QSqlDatabase::connectionNames()，
     // 因为 connectionNames() 只返回"当前线程可见"的连接，跨线程统计会数错。

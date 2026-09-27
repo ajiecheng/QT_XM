@@ -10,7 +10,7 @@ Server::Server(QWidget *parent): QWidget(parent)
 {
     loadConfig();                                                          // 读取server.config获取IP和端口
     MyQTcpServer::getInstance().listen(QHostAddress(m_strIP),m_usPort);    // 启动TCP监听，等待客户端连接
-    ConnectionPool::getInstance().setMaxIdleMs(3000);
+    //ConnectionPool::getInstance().setMaxIdleMs(3000);
 }
 
 Server::~Server()
