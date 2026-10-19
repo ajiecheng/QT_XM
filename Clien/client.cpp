@@ -7,9 +7,7 @@
 #include <QFile>
 #include <QMessageBox>
 #include <QDebug>
-// 客户端主类实现：配置加载、服务器连接、消息收发、UI事件处理
 
-// 构造函数：初始化UI，加载配置，连接服务器，绑定信号槽
 Client::Client(QWidget *parent) : QWidget(parent), ui(new Ui::Client)
 {
     ui->setupUi(this);                                               // 初始化UI界面
@@ -94,27 +92,6 @@ void Client::on_login_PB_clicked()
     sendMsg(pdu);                                              // 发送到服务器
 }
 
-
-// 发送PDU消息：通过TCP写入数据后释放内存
-/*
-void Client::sendMsg(PDU*pdu)
-{
-    if(pdu==NULL){
-        return;
-    }
-
-    m_socket.write((char*)pdu,pdu->uiPDULen);          // 将PDU原始字节写入TCP socket发送
-    qDebug()<< "send uiPDULen" << pdu->uiPDULen
-            << "uiMsgLen" << pdu->uiMsgLen
-            << "uiMsgType" << pdu->uiMsgType
-            << "caData" << pdu->caData
-            << "caData+32" << pdu->caData+32
-            << "caMsg" <<pdu->caMsg;
-    free(pdu);                                          // 发送后释放内存
-    pdu=NULL;
-}
-
-*/
 void Client::sendMsg(PDU*pdu)
 {
     if(pdu==NULL){
@@ -138,7 +115,7 @@ void Client::sendMsg(PDU*pdu)
 
 // 把发送缓冲里的剩余字节继续写入socket；没写完就等bytesWritten信号再触发本函数
 void Client::flushWriteBuffer()
-{//新增缓冲
+{
     if(m_writeBuffer.isEmpty()){
         return;
     }
@@ -150,7 +127,6 @@ void Client::flushWriteBuffer()
     if(n > 0){
         m_writeBuffer.remove(0, int(n));                 // 移除已写出的部分
     }
-    // n==0（缓冲满，一字节都没写进去）或仍有剩余：等bytesWritten信号再次触发
 }
 
 
@@ -266,15 +242,6 @@ void Client::handleMsg(PDU *pdu)
 // 启动文件上传：创建Uploader对象，连接信号槽，在子线程中执行上传
 void Client::startUpload()
 {
-    //File* f = Index::getInstance().getFile();              // 获取文件页面实例
-    //Uploader* uploader = new Uploader(f->m_strUploadFilePath); // 创建上传器，传入本地文件路径
-    //m_pUploader = new Uploader(f->m_strUploadFilePath);   // 保存指针，供ACK唤醒
-    //m_pUploader = new Uploader(f->m_strUploadFilePath, m_iUploadOffset);   // 传入起始偏移
-    //connect(uploader,&Uploader::errorMsg,this,&Client::showError); // 错误消息→弹窗显示
-    //connect(uploader,&Uploader::sendPDU,this,&Client::sendMsg);    // 发送PDU→通过Client发送
-    //connect(uploader,&Uploader::progress,f,&File::updateProgress); // 进度信号→进度条
-    //connect(uploader,&Uploader::finished,uploader,&QObject::deleteLater);
-    //uploader->start();                                     // 启动上传线程
     File* f = Index::getInstance().getFile();
        m_pUploader = new Uploader(f->m_strUploadFilePath, m_iUploadOffset);   // 只创建一个
        connect(m_pUploader,&Uploader::errorMsg,this,&Client::showError);
