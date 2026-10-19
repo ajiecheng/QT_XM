@@ -1,6 +1,6 @@
 #ifndef CLIENT_H
 #define CLIENT_H
-// 客户端主类头文件：管理TCP连接、配置加载、消息收发和路由/#include "protocol.h"
+
 #include "reshandler.h"
 
 #include <QTcpSocket>
