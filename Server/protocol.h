@@ -63,7 +63,7 @@ struct PDU{
 // 根据消息长度在堆上分配PDU空间，初始化并返回指针
 PDU* mkPDU(unsigned int uiMsgLen=0);
 
-// 安全字符串拷贝：最多拷贝 dstSize-1 字节，末尾补 NUL，避免越界读源，替换硬拷贝
+// 安全字符串拷贝：最多拷贝 dstSize-1 字节，末尾补 NUL，避免越界读源
 inline void strncpySafe(char* dst, int dstSize, const char* src)
 {
     if(dst == NULL || src == NULL || dstSize <= 0){
@@ -78,4 +78,4 @@ inline void strncpySafe(char* dst, int dstSize, const char* src)
 }
 
 
-#endif // PROTOCOL_H
+#endif 
