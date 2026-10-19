@@ -3,21 +3,12 @@
 
 #include <QFile>
 #include <QThread>
-// 文件上传器实现：在子线程中逐块读取本地文件并通过信号发送
 
 Uploader::Uploader()
 {
 
 }
 
-
-/* // 构造函数：保存要上传的本地文件路径
-Uploader::Uploader(const QString strFilePath)
-{
-    m_strUploadFilePath = strFilePath;
-}*/
-
-//构造函数
 Uploader::Uploader(const QString strFilePath, qint64 startOffset)
     : m_strUploadFilePath(strFilePath),
       m_iStartOffset(startOffset),
@@ -26,36 +17,6 @@ Uploader::Uploader(const QString strFilePath, qint64 startOffset)
 {
 }
 
-
-// 在子线程中执行的槽函数：循环读取文件，每16KB封装为一个PDU并通过信号发出
-/*void Uploader::uploadFile()
-{
-    QFile file(m_strUploadFilePath);                         // 打开要上传的本地文件
-    if(!file.open(QIODevice::ReadOnly)){
-        emit errorMsg("上传文件失败：打开文件失败");           // 打开失败：通知主线程显示错误
-        emit finished();                                      // 通知线程完成
-        return;
-    }
-    // 循环以16KB为块大小读取文件,宏定义
-    while(true){
-        PDU* datapdu = mkPDU(UPLOAD_BLOCK_SIZE);                          // 创建16KB容量的数据块PDU
-        datapdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_DATA_REQUEST;
-        qint64 ret = file.read(datapdu->caMsg,UPLOAD_BLOCK_SIZE);         // 读取最多16KB到caMsg
-        if(ret < 0){
-            emit errorMsg("上传文件失败：读取文件失败");       // 读取失败
-            emit finished();
-            return;
-        }if(ret == 0){                                       // ret==0表示文件已读完
-            break;
-        }
-        datapdu->uiMsgLen = ret;                             // 更新实际数据长度
-        datapdu->uiPDULen = ret+sizeof(PDU);                 // 更新PDU总长度
-        emit sendPDU(datapdu);                               // 通过信号将数据块发送给Client::sendMsg
-    }
-    file.close();                                            // 关闭本地文件
-    emit finished();                                         // 通知线程完成
-}
- */
 void Uploader::uploadFile()
 {
     QFile file(m_strUploadFilePath);
@@ -71,9 +32,6 @@ void Uploader::uploadFile()
 
     qint64 total = file.size();
     qint64 sent = m_iStartOffset;          // 已发字节从断点开始算（原来是0）
-
-   // qint64 total = file.size();                              // 文件总大小
-   //qint64 sent = 0;                                         // 已读并发送的字节数
     PDU* datapdu = NULL;
     while(true){
         datapdu = mkPDU(UPLOAD_BLOCK_SIZE);
@@ -96,21 +54,12 @@ void Uploader::uploadFile()
         emit sendPDU(datapdu);
 
         sent += ret;                                         // 累加已发送字节
-        int percent = total > 0 ? int(sent * 100 / total) : 100; // 算百分比（total>0防除零）
+        int percent = total > 0 ? int(sent * 100 / total) : 100; 
         emit progress(percent);                              // 通知主线程更新进度条
 
         if(sent == total){                    // 这是最后一块：不等ACK，等DATA_RESPOND
             break;
         }
-/*   // 停等：阻塞等服务器ACK，再发下一块（流控）
-        {
-            QMutexLocker locker(&m_ackMutex);
-            m_ackReceived = false;
-            while(!m_ackReceived){
-                m_ackCond.wait(&m_ackMutex);  // 原子解锁+阻塞；被唤醒后重新加锁
-            }
-        }
-*/
         // 停等：阻塞等服务器ACK，再发下一块（流控）
                {
                    QMutexLocker locker(&m_ackMutex);
