@@ -24,7 +24,7 @@ void MyQTcpServer::incomingConnection(qintptr handle)
     int index = m_nextIndex % kThreadCount;     // 先算出下标
     ++m_nextIndex;
     QThread* thread = &m_workerThreads[index];
-    qDebug() << "客户端分配到线程" << index << "（下标 0~7）";   // ← 新增打印
+    qDebug() << "客户端分配到线程" << index << "（下标 0~7）";   //新增打印
 
 
     socket->m_pThread = thread;                     // 记录所属线程
