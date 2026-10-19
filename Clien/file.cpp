@@ -6,11 +6,8 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QDebug>
-#include <QCryptographicHash>//MD5头文件
+#include <QCryptographicHash>
 
-// 文件管理页面实现：目录导航、文件上传、文件夹操作、文件分享
-
-// 构造函数：初始化路径并首次刷新文件列表
 File::File(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::File)
@@ -18,16 +15,14 @@ File::File(QWidget *parent) :
     ui->setupUi(this);
     m_strUserPath = QString("%1/%2").arg(Client::getInstance().m_strRootPath)
                         .arg(Client::getInstance().m_strUserName);  // 用户根路径
-    m_strCurPath = m_strUserPath;                                    // 初始当前目录 = 根
+    m_strCurPath = m_strUserPath;                                    // 初始当前目录
     m_pShareFile = new ShareFile;                                    // 创建分享文件对话框
-
-    // ---- 目录树相关初始化 ----
     connect(ui->treeWidget, &QTreeWidget::itemExpanded,
-            this, &File::onTreeItemExpanded);                        // 展开→懒加载
+            this, &File::onTreeItemExpanded);                       
     connect(ui->treeWidget, &QTreeWidget::currentItemChanged,
-            this, &File::onTreeCurrentItemChanged);                  // 选中变化→更新当前目录
+            this, &File::onTreeCurrentItemChanged);                  // 更新当前目录
 
-    ui->treeWidget->setHeaderLabel("我的网盘");                       // 顶部显示一列标题
+    ui->treeWidget->setHeaderLabel("我的网盘");                       // 顶部显示标题
     m_pRootItem = new QTreeWidgetItem;                               // 创建根节点
     m_pRootItem->setText(0, m_strUserPath);                          // 根节点显示用户根路径
     m_pRootItem->setIcon(0, QIcon(QPixmap(":/dir.png")));            // 文件夹图标
@@ -42,10 +37,9 @@ File::~File()
     delete ui;
 }
 
-// 重新加载整棵目录树：清空后重建根节点并加载根目录
 void File::flushFile()
 {
-    ui->treeWidget->clear();                                         // 清空整棵树
+    ui->treeWidget->clear();                                         // 清空树
 
     m_pRootItem = new QTreeWidgetItem;                               // 重建根节点
     m_pRootItem->setText(0, m_strUserPath);
@@ -73,7 +67,7 @@ void File::loadDirIntoItem(QTreeWidgetItem* parentItem, const QString& dirPath)
 // 用服务器返回的数据，填充"当前父节点"的子项
 void File::updateFileList(QList<FileInfo*> pFileList)
 {
-    foreach(FileInfo* pFileInfo, m_pFileInfoList){                   // 清理旧的FileInfo对象
+    foreach(FileInfo* pFileInfo, m_pFileInfoList){                
         delete pFileInfo;
     }
     m_pFileInfoList.clear();
@@ -93,7 +87,7 @@ void File::updateFileList(QList<FileInfo*> pFileList)
 
         if(pInfo->iFileType == 0){                                   // 目录
             pItem->setIcon(0, QIcon(QPixmap(":/dir.png")));
-            pItem->addChild(new QTreeWidgetItem);                    // 占位子节点→冒出▶箭头
+            pItem->addChild(new QTreeWidgetItem);                    
             pItem->setData(0, Qt::UserRole,   strParentPath + "/" + strName); // 存完整路径
             pItem->setData(0, Qt::UserRole+1, 0);                    // 存类型：目录
         } else {                                                     // 文件
@@ -108,7 +102,6 @@ void File::updateFileList(QList<FileInfo*> pFileList)
     m_pCurParentItem->setExpanded(true);                             // 加载完自动展开
 }
 
-// 更新上传进度条（由Uploader子线程的信号触发，在主线程执行）
 void File::updateProgress(int percent)
 {
     qDebug() << "上传进度:" << percent;   // 临时调试用
@@ -122,8 +115,6 @@ void File::resetUploadProgress()
     ui->uploadProgressBar->setValue(0);
 }
 
-
-// 在主线程中逐块读取本地文件并直接通过socket发送（旧上传方案，Uploader是新方案）
 void File::uploadFile()
 {
     QFile file(m_strUploadFilePath);                                 // 打开要上传的本地文件
@@ -139,7 +130,7 @@ void File::uploadFile()
         if(ret < 0){
             QMessageBox::information(this,"上传文件","读取文件失败");
             return;
-        }if(ret == 0){                                               // ret==0表示文件读完
+        }if(ret == 0){                                               // 文件读完
             break;
         }
         datapdu->uiMsgLen = ret;                                     // 更新实际读到的数据长度
@@ -174,8 +165,6 @@ void File::on_flushFile_PB_clicked()
     flushFile();
 }
 
-// 删除文件夹按钮：选中后确认删除（仅删除目录，不删除文件）
-// 删除文件夹按钮：选中目录节点后确认删除
 void File::on_deldir_PB_clicked()
 {
     QTreeWidgetItem* pItem = ui->treeWidget->currentItem();          // 获取当前选中节点
@@ -215,22 +204,6 @@ void File::on_deldir_PB_clicked()
     delete removed;
 }
 
-
-// 双击列表项：如果是目录则进入，如果是文件则忽略
-/* void File::on_listWidget_itemDoubleClicked(QListWidgetItem *item)
-{
-    QString strDirName = item->text();
-
-    foreach(FileInfo* pFileInfo, m_pFileInfoList){                   // 查找到该条目
-        if(strDirName == pFileInfo->caName && pFileInfo->iFileType != 0){
-            return;                                                  // 是文件不是目录，不进入
-        }
-    }
-    m_strCurPath = QString("%1/%2").arg(m_strCurPath).arg(strDirName); // 拼接新路径
-    flushFile();                                                     // 进入后刷新
-} */
-
-
 // 树模式下"返回上一级"改为：折叠当前选中的节点（收起它的子项）
 void File::on_return_PB_clicked()
 {
@@ -242,24 +215,6 @@ void File::on_return_PB_clicked()
     pItem->setExpanded(false);                                       // 折叠选中节点
 }
 
-// 上传文件按钮：打开文件选择对话框，发送上传初始化请求
-/*  void File::on_uploadFile_PB_clicked()
-{
-    m_strUploadFilePath = QFileDialog::getOpenFileName();            // 弹出文件选择对话框（获取本地绝对路径）
-    int index = m_strUploadFilePath.lastIndexOf('/');
-    QString strFileName =  m_strUploadFilePath.right(m_strUploadFilePath.size() - index - 1); // 提取文件名
-    QFile file(m_strUploadFilePath);
-    qint64 iFileSize = file.size();                                  // 获取文件大小（字节数）
-    // caData前32字节存文件名，caData后32字节存文件大小，caMsg存服务器目标路径
-    PDU* pdu = mkPDU(m_strCurPath.toStdString().size()+1);
-    pdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_INIT_REQUEST;
-    memcpy(pdu->caData,strFileName.toStdString().c_str(),32);
-    memcpy(pdu->caData+32, &iFileSize,32);                           // 将文件大小写入caData后32字节
-    memcpy(pdu->caMsg,m_strCurPath.toStdString().c_str(),m_strCurPath.toStdString().size());
-    Client::getInstance().sendMsg(pdu);                              // 发送初始化请求，等待服务器确认后开始上传
-}
-  */
-// 上传文件按钮：打开文件选择对话框，计算MD5后发送上传初始化请求
 void File::on_uploadFile_PB_clicked()
 {
     m_strUploadFilePath = QFileDialog::getOpenFileName();            // 弹出文件选择对话框
@@ -283,17 +238,6 @@ void File::on_uploadFile_PB_clicked()
         QMessageBox::information(this,"上传文件","打开文件失败");
         return;
     }
-
-                              // 发送初始化请求
-    /* // caData布局：前32字节文件名，32~40文件大小(qint64)，40~56 MD5(16字节)，caMsg放目标路径
-    PDU* pdu = mkPDU(m_strCurPath.toStdString().size()+1);
-    pdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_INIT_REQUEST;
-    memcpy(pdu->caData,strFileName.toStdString().c_str(),32);
-    memcpy(pdu->caData+32, &iFileSize,sizeof(qint64));               // 只写8字节，修掉原来写32字节的脏写法
-    memcpy(pdu->caData+40, baMd5.constData(),16);                    // 写入16字节MD5
-    memcpy(pdu->caMsg,m_strCurPath.toStdString().c_str(),m_strCurPath.toStdString().size());
-    Client::getInstance().sendMsg(pdu);     */
-    // caMsg = 文件名 + '\0' + 目标路径（UTF-8），解决长中文名超32字节被截断的问题
     QByteArray baMsg = strFileName.toUtf8();
     baMsg.append('\0');
     baMsg.append(m_strCurPath.toUtf8());
@@ -308,15 +252,14 @@ void File::on_uploadFile_PB_clicked()
 }
 
 // 分享文件按钮：选中文件后打开分享对话框
-// 分享文件按钮：选中文件后打开分享对话框
 void File::on_shareFile_PB_clicked()
 {
-    QTreeWidgetItem* pItem = ui->treeWidget->currentItem();          // 改：treeWidget
+    QTreeWidgetItem* pItem = ui->treeWidget->currentItem();         
     if(pItem == NULL){
         QMessageBox::information(this,"分享文件","请选择要分享的文件");
         return;
     }
-    m_strShareFileName = pItem->text(0);                             // 改：text(0)
+    m_strShareFileName = pItem->text(0);                             
     m_pShareFile->updateFirend_LW();                                 // 从好友列表刷新分享目标列表
     if(m_pShareFile->isHidden()){
        m_pShareFile->show();                                         // 显示分享对话框
