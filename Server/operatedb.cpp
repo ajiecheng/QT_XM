@@ -1,14 +1,14 @@
 #include "operatedb.h"
-#include "connectionpool.h"      // ← 新增
-#include "scopedtransaction.h"   // ← 加这一行
-#include "scopedconnection.h"    // ← 加这一行，解决借用数据库连接线程的归还问题
+#include "connectionpool.h"    
+#include "scopedtransaction.h"  
+#include "scopedconnection.h"   
 #include <QDebug>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QThread>
 // 数据库操作实现：MySQL连接、用户管理、好友关系管理
 
-// 单例实现：返回全局唯一的数据库操作实例
+// 单例实现
 OperateDb& OperateDb::getInstance()
 {
     static OperateDb instance;
@@ -21,19 +21,16 @@ bool OperateDb::handleRegist(const char * caName,const char* caPwd)
         return false;
     }
 
-    // 不再先 SELECT 查重，直接插入，靠 name 上的唯一索引 uk_name 兜底防重名
     QString sql = QString("insert into user_info(name,pwd) values('%1','%2')")
                       .arg(caName).arg(caPwd);
     qDebug()<<"handleRegist 添加用户"<<sql;
 
-    //QSqlQuery q(db());
     ScopedConnection conn;  // 借连接，函数结束时析构自动归还
     QSqlQuery q(conn.db()); // 改用 conn 的连接
 
     q.exec(sql);
 
-    if(q.lastError().isValid()){                     // 执行出了错
-        // 错误码 1062 = Duplicate entry：唯一索引把重复用户名拦下了
+    if(q.lastError().isValid()){                     
         if(q.lastError().nativeErrorCode() == "1062"){
             qDebug()<<"handleRegist 用户名已存在";
             return false;
@@ -53,10 +50,8 @@ bool OperateDb::handleLogin(const char *caName, const char *caPwd)
     // 第一步：验证用户名和密码是否匹配
     QString sql = QString("select * from user_info where name = '%1' and pwd ='%2'").arg(caName).arg(caPwd);
     qDebug()<<"handleLogin 判断登录的用户名及密码是否正确"<<sql;
-    //QSqlQuery q;
-    //QSqlQuery q(db());   // 绑定当前线程的连接，而不是默认连接
     ScopedConnection conn;  // 借连接，函数结束时析构自动归还
-    QSqlQuery q(conn.db()); // 改用 conn 的连接
+    QSqlQuery q(conn.db()); 
 
     if(!q.exec(sql)||!q.next()){                    // SQL失败或无匹配结果
         return false;
@@ -73,18 +68,15 @@ void OperateDb::handleOffline(const char *caName)
     if(caName == NULL){
         return;
     }
-   // QSqlQuery q;
-    //QSqlQuery q(db());   // 绑定当前线程的连接，而不是默认连接
     ScopedConnection conn;  // 借连接，函数结束时析构自动归还
-    QSqlQuery q(conn.db()); // 改用 conn 的连接
+    QSqlQuery q(conn.db()); 
 
     QString sql=QString("update user_info set online=0 where name = '%1'").arg(caName);
     qDebug()<<"handleoffline 用户online置为0："<<sql;
     q.exec(sql);
 }
 
-// 查找用户：查询目标用户是否存在及在线状态
-// 返回值：-1=失败，0=离线，1=在线，2=用户不存在
+// 返回值：-1失败，0离线，1在线，2用户不存在
 int OperateDb::handleFindUser(const char *caName)
 {
     if(caName == NULL){
@@ -95,7 +87,7 @@ int OperateDb::handleFindUser(const char *caName)
    // QSqlQuery q;
     //QSqlQuery q(db());   // 绑定当前线程的连接，而不是默认连接
     ScopedConnection conn;  // 借连接，函数结束时析构自动归还
-    QSqlQuery q(conn.db()); // 改用 conn 的连接
+    QSqlQuery q(conn.db()); 
 
     if(!q.exec(sql)){                                // SQL执行失败
         return -1;
@@ -114,7 +106,7 @@ QStringList OperateDb::handleOnlineUser()
     //QSqlQuery q;
     //QSqlQuery q(db());   // 绑定当前线程的连接，而不是默认连接
     ScopedConnection conn;  // 借连接，函数结束时析构自动归还
-    QSqlQuery q(conn.db()); // 改用 conn 的连接
+    QSqlQuery q(conn.db()); 
 
     QStringList result;
     if(!q.exec(sql)){
@@ -129,17 +121,15 @@ QStringList OperateDb::handleOnlineUser()
 
 OperateDb::~OperateDb()
 {
-    //m_db.close();                                    // 析构时关闭数据库连接
 }
 
-// 添加好友：检查好友关系是否已存在、目标用户是否在线
-// 返回值：-1=失败，0=目标离线，1=目标在线可添加，2=已是好友
+// 返回值：-1失败，0目标离线，1目标在线可添加，2已是好友
 int OperateDb::handleAddFirend(const char *caCurName, const char *caTarName)
 {
     if(caCurName == NULL || caTarName == NULL){
         return -1;
     }
-    // 第一步：检查是否已经是好友关系（friend表无方向性，需双向检查）
+    //检查是否已经是好友关系（friend表无方向性，需双向检查）
     QString sql = QString(R"(
                           select * from friend
                           where(
@@ -154,10 +144,8 @@ int OperateDb::handleAddFirend(const char *caCurName, const char *caTarName)
                           )
                           )").arg(caCurName).arg(caTarName);
     qDebug()<<"handleAddFirend 是否为好友"<<sql;
-    //QSqlQuery q;
-    //QSqlQuery q(db());   // 绑定当前线程的连接，而不是默认连接
     ScopedConnection conn;  // 借连接，函数结束时析构自动归还
-    QSqlQuery q(conn.db()); // 改用 conn 的连接
+    QSqlQuery q(conn.db()); 
 
     q.exec(sql);
     if(q.next()){                                    // 已有好友关系
@@ -173,25 +161,6 @@ int OperateDb::handleAddFirend(const char *caCurName, const char *caTarName)
     return -1;                                       // 目标用户不存在
 }
 
-/* // 同意好友申请：在friend表中插入一对好友关系
-bool OperateDb::handleAddFirendArgee(const char *caCurName, const char *caTarName)
-{
-    if(caCurName == NULL || caTarName == NULL){
-        return false;
-    }
-    // 通过子查询分别获取两个用户的id，插入friend表
-    QString sql = QString(R"(
-                          insert into friend(user_id,friend_id)
-                          select u1.id, u2.id
-                          from user_info u1,user_info u2
-                          where u1.name = '%1' and u2.name = '%2'
-                          )").arg(caCurName).arg(caTarName);
-     qDebug()<<"handleAddFirendArgee 添加好友记录"<<sql;
-     //QSqlQuery q;
-     QSqlQuery q(db());   // 绑定当前线程的连接，而不是默认连接
-
-     return q.exec(sql);
-} */
 // 同意好友申请：在friend表中双向插入两行好友关系（A→B 和 B→A），用事务保证成对
 bool OperateDb::handleAddFirendArgee(const char *caCurName, const char *caTarName)
 {
@@ -201,28 +170,16 @@ bool OperateDb::handleAddFirendArgee(const char *caCurName, const char *caTarNam
     ScopedConnection conn;              // ① 借连接，析构自动还
     QSqlDatabase db = conn.db();        // ② 拿到连接
     ScopedTransaction tx(db);           // ③ 开事务，析构自动 commit/rollback
-    // ★ 关键：先把连接抓到变量里，transaction/commit/rollback 都调用在它上面
-    //QSqlDatabase db = this->db();   // 借当前线程的连接
-    //ScopedTransaction tx(db);       // 构造即开事务；函数退出时析构自动兜底
-
-    // ① 正向一行：A 是 B 的好友
-    //ScopedConnection conn;  // 借连接，函数结束时析构自动归还
     QSqlQuery q1(conn.db()); // 改用 conn 的连接
-
-    //QSqlQuery q1(db);
     bool ok1 = q1.exec(QString(R"(
                         insert into friend(user_id,friend_id)
                         select u1.id, u2.id
                         from user_info u1,user_info u2
                         where u1.name = '%1' and u2.name = '%2'
                         )").arg(caCurName).arg(caTarName));
-    // 防坑：INSERT...SELECT 若子查询查不到人，会"插入0行却不报错"
-    //       所以这里还要确认真的插进了 1 行
     ok1 = ok1 && (q1.numRowsAffected() == 1);
 
-    // ② 反向一行：B 是 A 的好友
-    //QSqlQuery q2(db);
-    QSqlQuery q2(conn.db()); // 改用 conn 的连接
+    QSqlQuery q2(conn.db()); 
 
     bool ok2 = q2.exec(QString(R"(
                         insert into friend(user_id,friend_id)
@@ -232,7 +189,6 @@ bool OperateDb::handleAddFirendArgee(const char *caCurName, const char *caTarNam
                         )").arg(caTarName).arg(caCurName));
     ok2 = ok2 && (q2.numRowsAffected() == 1);
 
-    // ③ 两条都成功 → 提交；否则什么都不用写，ScopedTransaction 析构自动 rollback
     if (ok1 && ok2) {
         tx.commit();
         return true;
@@ -289,21 +245,16 @@ bool OperateDb::handleDelFirend(const char *caCurName, const char *caTarName)
                   )").arg(caCurName).arg(caTarName);
     qDebug()<<"handleDelFirend 删除好友关系"<<sql;
 
-    //QSqlQuery q(db());   // 绑定当前线程的连接，而不是默认连接
     ScopedConnection conn;  // 借连接，函数结束时析构自动归还
-    QSqlQuery q(conn.db()); // 改用 conn 的连接
-
+    QSqlQuery q(conn.db()); 
     q.exec(sql);
     if(q.lastError().isValid()){                    // SQL 执行失败
         qDebug()<<"handleDelFirend 删除失败:"<<q.lastError().text();
         return false;
     }
-    // 删了 0 行 = 本来就不是好友；删了 2 行 = 成功删掉双向两行
     return q.numRowsAffected() > 0;
 }
 
-// 构造函数：初始化Qt MySQL数据库驱动。改成按需后这个构造函数没有被调用
 OperateDb::OperateDb(QObject *parent) : QObject(parent)
 {
-    //m_db = QSqlDatabase::addDatabase("QMYSQL");      // 添加MySQL数据库驱动
 }
