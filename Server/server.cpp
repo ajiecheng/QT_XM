@@ -5,7 +5,6 @@
 #include <QDebug>
 // 服务器主类实现：配置加载、TCP监听启动
 
-// 构造函数：加载配置文件，启动TCP服务器监听
 Server::Server(QWidget *parent): QWidget(parent)
 {
     loadConfig();                                                          // 读取server.config获取IP和端口
@@ -18,14 +17,14 @@ Server::~Server()
 
 }
 
-// 单例实现：返回全局唯一的Server实例（静态局部变量保证线程安全）
+// 单例实现
 Server &Server::getInstance()
 {
     static Server instance;
     return instance;
 }
 
-// 加载server.config配置文件：第1行IP地址，第2行端口号，第3行文件根路径
+// 加载server.config配置文件：IP地址，端口号，文件根路径
 void Server::loadConfig()
 {
     QFile file(":/server.config");                    // 从Qt资源系统读取配置文件
