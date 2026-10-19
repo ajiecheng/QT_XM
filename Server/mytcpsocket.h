@@ -1,6 +1,5 @@
 #ifndef MYTCPSOCKET_H
 #define MYTCPSOCKET_H
-// 自定义TCP Socket类：网络通信的端点，封装消息收发、粘包处理、消息路由
 #include "msghandler.h"
 #include "protocol.h"
 
