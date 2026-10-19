@@ -20,22 +20,18 @@ public:
 
 
 
-    // --- 用户相关 ---
     PDU* regist(PDU* pdu);           // 用户注册：检查重复、创建用户目录
     PDU* login(PDU* pdu,QString& loginName); // 用户登录：验证凭据、更新在线状态
     PDU* findUser(PDU* pdu);         // 查找用户：查询目标用户是否在线
 
-    // --- 好友相关 ---
     PDU* onlineUser();               // 获取在线用户：查询所有online=1的用户
     PDU* addFriend(PDU* pdu);        // 添加好友：检查目标并转发申请
     PDU* addFriendArgee(PDU* pdu);   // 同意好友申请：插入数据库记录
     PDU* flushFriend(PDU* pdu);      // 刷新好友列表：查询并返回所有好友
     PDU* delFriend(PDU* pdu);        // 删除好友：从数据库删除关系
 
-    // --- 聊天相关 ---
     PDU* chat(PDU* pdu);             // 聊天消息：转发给目标用户
 
-    // --- 文件操作 ---
     PDU* mkdir(PDU* pdu);            // 新建文件夹：在指定路径创建目录
     PDU* flushFile(PDU* pdu);        // 刷新文件列表：获取当前路径下的文件和目录
     PDU* deldir(PDU* pdu);           // 删除文件夹：递归删除
