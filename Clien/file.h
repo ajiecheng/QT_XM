@@ -1,6 +1,5 @@
 #ifndef FILE_H
 #define FILE_H
-// 文件管理页面头文件：浏览、新建、删除文件夹，上传、分享文件
 #include "protocol.h"
 #include "sharefile.h"
 
@@ -19,7 +18,7 @@ public:
     explicit File(QWidget *parent = nullptr);
     ~File();
     QString m_strUserPath;                 // 用户的根路径（由rootPath+用户名组成）
-    QString m_strCurPath;                  // 当前选中目录的路径（供上传/新建/删除/分享使用）
+    QString m_strCurPath;                  // 当前选中目录的路径
     QString m_strUploadFilePath;           // 准备上传的本地文件路径
     void flushFile();                      // 重新加载整棵目录树
     void loadDirIntoItem(QTreeWidgetItem* parentItem, const QString& dirPath); // 请求某目录的子项并挂到父节点
