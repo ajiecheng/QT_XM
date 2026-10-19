@@ -7,14 +7,14 @@
 #include <QCryptographicHash>//MD5
 #include <QFileInfo>//秒传
 
-// 消息处理器实现：服务器端处理所有业务请求的核心逻辑
+// 消息处理器
 
 MsgHandler::MsgHandler()
 {
 
 }
 
-// 注册处理：从PDU提取用户名密码，写入数据库，并为新用户创建个人目录
+// 从PDU提取用户名密码，写入数据库，并为新用户创建个人目录
 PDU* MsgHandler::regist(PDU *pdu)
 {
     char caName[32] = {'\0'};                     // 用户名字段（定长32字节）
@@ -80,7 +80,7 @@ PDU *MsgHandler::onlineUser()
     return respdu;
 }
 
-// 添加好友：检查目标用户状态，若在线则转发好友申请
+// 检查目标用户状态，若在线则转发好友申请
 PDU *MsgHandler::addFriend(PDU *pdu)
 {
     char caCurName[32] = {'\0'};
@@ -89,8 +89,8 @@ PDU *MsgHandler::addFriend(PDU *pdu)
     memcpy(caTarName,pdu->caData+32,32);
     int ret = OperateDb::getInstance().handleAddFirend(caCurName,caTarName); // 检查是否为好友及目标在线状态
     qDebug()<<"添加好友 ret"<<ret;
-    if(ret == 1){                                    // ret==1表示目标在线且非好友
-        MyQTcpServer::getInstance().resend(caTarName,pdu); // 将好友申请转发给目标客户端（触发对面的addFriendResend）
+    if(ret == 1){// ret==1表示目标在线且非好友
+        MyQTcpServer::getInstance().resend(caTarName,pdu); // 将好友申请转发给目标客户端
     }
     PDU*respdu = mkPDU();
     memcpy(respdu->caData,&ret,sizeof(int));
@@ -169,7 +169,7 @@ PDU *MsgHandler::mkdir(PDU *pdu)
 PDU *MsgHandler::flushFile(PDU *pdu)
 {
     QDir dir(pdu->caMsg);                             // 用caMsg中的路径构建QDir对象
-    QFileInfoList fileInfoList =  dir.entryInfoList(); // 获取目录下所有条目（含.和..）
+    QFileInfoList fileInfoList =  dir.entryInfoList(); // 获取目录下所有条目
     int iFileCount =  fileInfoList.size();            // 条目总数
     PDU* respdu = mkPDU(iFileCount * sizeof (FileInfo)); // 按文件数*每个FileInfo大小申请caMsg空间
     respdu->uiMsgType = ENUM_MSG_TYPE_FLUSH_FILE_RESPOND;
@@ -202,36 +202,9 @@ PDU *MsgHandler::deldir(PDU *pdu)
     return respdu;
 }
 
-// 上传文件初始化：创建目标文件并打开，准备接收数据块
-/* PDU *MsgHandler::uploadFileInit(PDU *pdu)
-{
-    char caFileName[32] = {'\0'};
-    memcpy(caFileName,pdu->caData,32);               // 文件名从caData前32字节提取
-    memcpy(&m_iUploadFileSize, pdu->caData+32,sizeof (qint64)); // 文件总大小从caData后32字节提取
-    memcpy(m_caUploadFileMd5, pdu->caData+40, 16);             // 读取客户端传来的MD5<追加>
-    QString strPath = QString("%1/%2").arg(pdu->caMsg).arg(caFileName); // 拼接：当前路径/文件名
-    m_fUploadFile.setFileName(strPath);              // 设置QFile的文件路径
-    m_iUploadFileReceived = 0;                       // 重置已接收字节计数
-    bool ret = m_fUploadFile.open(QIODevice::WriteOnly); // 以只写方式创建/覆盖文件
-
-    PDU* respdu = mkPDU();
-    respdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_INIT_RESPOND;
-    memcpy(respdu->caData,&ret,sizeof(bool));
-    return respdu;
-}
-*/
 // 上传文件初始化：先判断秒传，否则创建/覆盖目标文件，回传已收偏移offset
 PDU *MsgHandler::uploadFileInit(PDU *pdu)
 {
-
-/* char caFileName[32] = {'\0'};
-    memcpy(caFileName,pdu->caData,32);
-    memcpy(&m_iUploadFileSize, pdu->caData+32,sizeof (qint64));
-    memcpy(m_caUploadFileMd5, pdu->caData+40, 16);    // 读取客户端传来的MD5<追加>
-    QString strPath = QString("%1/%2").arg(pdu->caMsg).arg(caFileName);
-    m_fUploadFile.setFileName(strPath);
-    m_iUploadFileReceived = 0;
-*/
     memcpy(&m_iUploadFileSize, pdu->caData, sizeof(qint64));
     memcpy(m_caUploadFileMd5, pdu->caData+8, 16);
 
@@ -285,117 +258,9 @@ PDU *MsgHandler::uploadFileInit(PDU *pdu)
     PDU* respdu = mkPDU();
     respdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_INIT_RESPOND;
     memcpy(respdu->caData,&offset,sizeof(qint64));
-    return respdu;
-/*
-    qint64 offset = 0;                                // 回传给客户端：服务器已收的字节数
-
-    // 秒传判断：目标文件已存在且MD5一致 → 无需重复上传
-    QFileInfo info(strPath);
-    if(info.exists()){
-        QFile f(strPath);
-        if(f.open(QIODevice::ReadOnly)){
-            QCryptographicHash hash(QCryptographicHash::Md5);
-            hash.addData(&f);
-            QByteArray baMd5 = hash.result();
-            f.close();
-            if(baMd5 == QByteArray(m_caUploadFileMd5,16)){
-                offset = m_iUploadFileSize;           // 秒传：已收==总大小，客户端跳过上传
-            }
-        }
-    }
-
-    // 非秒传时才打开文件准备接收（覆盖写）
-    if(offset != m_iUploadFileSize){
-        if(!m_fUploadFile.open(QIODevice::WriteOnly)){
-            offset = -1;                              // 打开失败：回传-1表示错误
-        }
-    }
-
-    PDU* respdu = mkPDU();
-    respdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_INIT_RESPOND;
-    memcpy(respdu->caData,&offset,sizeof(qint64));    // 回传已收偏移
-    return respdu;
-
-*/
 
 }
 
-
-/* // 上传文件数据块：接收数据写入文件，累计接收量，完成后关闭文件
-PDU *MsgHandler::uploadFileData(PDU *pdu)
-{
-    m_fUploadFile.write(pdu->caMsg,pdu->uiMsgLen);   // 将caMsg中的数据块写入文件
-    m_iUploadFileReceived += pdu->uiMsgLen;           // 累加已接收字节数
-    if(m_iUploadFileReceived < m_iUploadFileSize){    // 未接收完：返回NULL，不回复客户端
-        return NULL;
-    }
-    m_fUploadFile.close();                            // 接收完毕：关闭文件
-    PDU* respdu = mkPDU();
-    respdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_DATA_RESPOND;
-    return respdu;                                    // 回复上传完成确认
-}
-
-
-
-
-// 上传文件数据块：接收数据写入文件，收满后校验MD5，回传校验结果
-PDU *MsgHandler::uploadFileData(PDU *pdu)
-{
-    m_fUploadFile.write(pdu->caMsg,pdu->uiMsgLen);   // 将caMsg中的数据块写入文件
-    m_iUploadFileReceived += pdu->uiMsgLen;           // 累加已接收字节数
-    if(m_iUploadFileReceived < m_iUploadFileSize){    // 未接收完：返回NULL，不回复客户端
-        return NULL;
-    }
-    m_fUploadFile.close();                            // 接收完毕：关闭文件
-
-    // 计算落盘文件的MD5，与客户端传来的期望值比对
-    bool bMd5Ok = false;
-    QFile f(m_fUploadFile.fileName());                // fileName()取回setFileName时的路径
-    if(f.open(QIODevice::ReadOnly)){
-        QCryptographicHash hash(QCryptographicHash::Md5);
-        hash.addData(&f);
-        QByteArray baMd5 = hash.result();             // 16字节二进制MD5
-        bMd5Ok = (baMd5 == QByteArray(m_caUploadFileMd5, 16)); // 与期望MD5逐字节比较
-        f.close();
-    }
-
-    PDU* respdu = mkPDU();
-    respdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_DATA_RESPOND;
-    memcpy(respdu->caData,&bMd5Ok,sizeof(bool));      // 把MD5校验结果带回客户端
-    return respdu;
-}
-
-PDU *MsgHandler::uploadFileData(PDU *pdu)
-{
-    m_fUploadFile.write(pdu->caMsg,pdu->uiMsgLen);
-    m_iUploadFileReceived += pdu->uiMsgLen;
-
-    if(m_iUploadFileReceived < m_iUploadFileSize){
-        // 未收完：回ACK（已收字节数），供客户端停等流控
-        PDU* ackpdu = mkPDU();
-        ackpdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_DATA_ACK;
-        memcpy(ackpdu->caData, &m_iUploadFileReceived, sizeof(qint64));
-        return ackpdu;
-    }
-
-    // 收满：close + MD5校验 + 回最终完成（保持你之前的MD5逻辑不变）
-    m_fUploadFile.close();
-    bool bMd5Ok = false;
-    QFile f(m_fUploadFile.fileName());
-    if(f.open(QIODevice::ReadOnly)){
-        QCryptographicHash hash(QCryptographicHash::Md5);
-        hash.addData(&f);
-        QByteArray baMd5 = hash.result();
-        bMd5Ok = (baMd5 == QByteArray(m_caUploadFileMd5, 16));
-        f.close();
-    }
-    PDU* respdu = mkPDU();
-    respdu->uiMsgType = ENUM_MSG_TYPE_UPLOAD_FILE_DATA_RESPOND;
-    memcpy(respdu->caData,&bMd5Ok,sizeof(bool));
-    return respdu;
-}
-
-*/
 PDU *MsgHandler::uploadFileData(PDU *pdu)
 {
     // 写入数据块，检查是否写成功（磁盘满/权限不足时返回<uiMsgLen）
