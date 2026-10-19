@@ -5,7 +5,6 @@
 #include <QThread>
 #include <QDateTime>
 
-// 规范第5条：局部静态变量实现单例
 ConnectionPool& ConnectionPool::getInstance()
 {
     static ConnectionPool instance;
@@ -14,25 +13,24 @@ ConnectionPool& ConnectionPool::getInstance()
 
 ConnectionPool::ConnectionPool(QObject* parent) : QObject(parent)
 {
-    // 数据库连接参数集中在这里，改一次就够（原来散落在 operatedb.cpp 里）
 }
 
 ConnectionPool::~ConnectionPool()
 {
-    // 程序退出时关闭池内连接。运行期借/还正确才是关键。
+    // 程序退出时关闭池内连接，运行期借/还
     QMutexLocker locker(&m_mutex);
     for (const QString& name : m_idleSince.keys()) {
         QSqlDatabase::removeDatabase(name);
     }
 }
 
-// 关键：连接名跟线程ID绑定，保证"一个线程只有一条连接"
+// 连接名跟线程ID绑定，一个线程只有一条连接
 QString ConnectionPool::connNameForThread() const
 {
     return QString("pool_%1").arg((quintptr)QThread::currentThreadId());
 }
 
-// 心跳检测：能执行 SELECT 1 说明连接还活着
+// 心跳检测：执行 SELECT 1 
 bool ConnectionPool::isAlive(const QSqlDatabase& db)
 {
     if (!db.isOpen())
@@ -60,25 +58,24 @@ QSqlDatabase ConnectionPool::borrow()
     const QString name = connNameForThread();
     QMutexLocker locker(&m_mutex);
 
-    // 情况1：本线程已有连接 → 心跳检测，活着就复用
+    // 心跳检测，活着就用
     if (m_idleSince.contains(name)) {
         {
             QSqlDatabase db = QSqlDatabase::database(name);
 
-            // 计算已空闲多久（m_idleSince[name]==0 表示正在使用，不算空闲）
             bool tooIdle = false;
             if (m_idleSince[name] != 0) {
                 qint64 idleMs = QDateTime::currentMSecsSinceEpoch() - m_idleSince[name];
                 tooIdle = idleMs > m_maxIdleMs;
             }
 
-            // 连接还活着 且 没闲置超时 → 直接复用
+            // 连接还活着 且 没闲置超时 
             if (isAlive(db) && !tooIdle) {
-                m_idleSince[name] = 0;      // 标记使用中
+                m_idleSince[name] = 0;      // 标记使用
                 return db;
             }
 
-            // 到这里说明：要么连接失效，要么闲置超时，都要关掉重建
+            // 连接失效||闲置超时，关掉重建
             if (tooIdle) {
                 qDebug() << "[ConnectionPool] 连接闲置超时，回收重建" << name;
             } else {
@@ -93,12 +90,12 @@ QSqlDatabase ConnectionPool::borrow()
 
 
     // 情况2：需要新建，先检查是否超过上限。
-    // 注意：连接是线程绑定的，别的线程还回来的连接我也用不了，
+    // 连接是线程绑定的，别的线程还回来的连接我也用不了，
     // 所以池满时"等待"没有意义，直接拒绝（返回无效连接）。
     if (m_idleSince.size() >= m_maxConnections) {
         qDebug() << "[ConnectionPool] 已达上限" << m_maxConnections
                  << "，拒绝新建（线程" << (quintptr)QThread::currentThreadId() << "）";
-        return QSqlDatabase();              // 无效连接，调用方需判断 isValid()
+        return QSqlDatabase();            
     }
 
     QSqlDatabase db = createNew(name);
