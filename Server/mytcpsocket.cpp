@@ -15,7 +15,7 @@ MyTcpSocket::MyTcpSocket()
     m_pThread = nullptr;
 }
 
-// 接收消息槽函数（处理TCP粘包问题）：将数据拼接到缓冲区，逐个解析并处理完整PDU
+// 接收消息槽函数（处理TCP粘包问题）将数据拼接到缓冲区，逐个解析并处理完整PDU
 void MyTcpSocket::recvMsg()
 {
     qDebug()<<"recvMsg 读取消息的长度"<<this->bytesAvailable();
@@ -142,24 +142,6 @@ void MyTcpSocket::forwardData(QByteArray data)
     this->write(data);   // 在socket所属线程写，安全
 }
 
-// 客户端离线处理：更新数据库在线状态为0，通知TCP服务器清理该socket
-/*void MyTcpSocket::clientoffline()
-{
-    OperateDb::getInstance().handleOffline(m_strUserName.toStdString().c_str()); // 数据库online置0
-    MyQTcpServer::getInstance().deleteSocket(this);                              // 从在线列表中移除
-}
-
-void MyTcpSocket::clientoffline()
-{
-    OperateDb::getInstance().handleOffline(m_strUserName.toStdString().c_str()); // B-3修
-    MyQTcpServer::getInstance().deleteSocket(this);   // 从列表移除（B-2修线程安全）
-    this->deleteLater();                              // 在本线程排队删除socket
-    if(m_pThread){
-        m_pThread->quit();                            // 退出线程事件循环
-    }
-}
- */
-
 void MyTcpSocket::clientoffline()
 {
     OperateDb::getInstance().handleOffline(m_strUserName.toStdString().c_str()); // 最后一次用本线程连接
@@ -169,10 +151,6 @@ void MyTcpSocket::clientoffline()
     //OperateDb::getInstance().releaseDb();             // 归还本线程的数据库连接（标记空闲）
     this->deleteLater();                              // 本线程排队删除socket
 
-    // ⚠️ 删掉原来的：
-    // if(m_pThread){
-    //     m_pThread->quit();   // 线程是共享的，退出它会连累同线程的其他客户端
-    // }
 }
 
 // 从socket缓冲区读取一条完整PDU消息：先读长度头，再按总长度读剩余数据
