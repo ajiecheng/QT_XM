@@ -4,9 +4,7 @@
 #include "ui_sharefile.h"
 
 #include <QMessageBox>
-// 分享文件对话框实现：选择好友、确认分享
 
-// 构造函数：初始化UI
 ShareFile::ShareFile(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::ShareFile)
@@ -31,7 +29,6 @@ void ShareFile::updateFirend_LW()
     }
 }
 
-// 全选按钮：选中所有好友
 void ShareFile::on_allSelect_PB_clicked()
 {
     for(int i = 0; i < ui->listWidget->count(); i++){
@@ -39,7 +36,6 @@ void ShareFile::on_allSelect_PB_clicked()
     }
 }
 
-// 取消全选按钮：取消所有好友的选中状态
 void ShareFile::on_cancelSelect_PB_clicked()
 {
     for(int i = 0; i < ui->listWidget->count(); i++){
