@@ -1,6 +1,5 @@
 #ifndef SERVER_H
 #define SERVER_H
-// 服务器主类头文件：管理服务器配置和全局状态
 #include <QWidget>
 
 class Server : public QWidget
