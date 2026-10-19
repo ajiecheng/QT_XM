@@ -5,7 +5,6 @@
 #include "client.h"
 #include <QInputDialog>
 #include <QMessageBox>
-// 好友管理页面实现：好友列表、查找用户、在线用户、删除好友、发起聊天
 
 // 构造函数：初始化子窗口，加载好友列表
 Friend::Friend(QWidget *parent) :
