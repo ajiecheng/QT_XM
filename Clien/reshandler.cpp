@@ -6,18 +6,10 @@
 #include <QFile>
 #include "uploader.h"
 
-
-// 响应处理器实现：解析服务器返回的PDU数据，执行对应的UI更新操作
-
-//ResHandler::ResHandler()
-//{
-//}
-
-// 注册响应：从caData中提取bool结果，弹窗提示
 void ResHandler::regist(PDU *pdu)
 {
     bool ret;
-    memcpy(&ret,pdu->caData,sizeof (bool));      // caData第1字节为bool结果
+    memcpy(&ret,pdu->caData,sizeof (bool));      
     if(ret){
         QMessageBox::information(&Client::getInstance(),"注册","注册成功");
     }else{
@@ -31,15 +23,13 @@ void ResHandler::login(PDU *pdu)
     bool ret;
     memcpy(&ret,pdu->caData,sizeof(bool));
     if(ret){
-        Index::getInstance().show();             // 显示主界面（好友+文件页面）
+        Index::getInstance().show();             // 显示主界面
         Client::getInstance().hide();            // 隐藏登录/注册窗口
     }else{
         QMessageBox::information(&Client::getInstance(),"登录","登录失败");
     }
 }
 
-// 查找用户响应：根据返回值弹窗提示用户状态
-// 返回值含义：-1=失败，0=离线，1=在线，2=不存在
 void ResHandler::findUser(PDU *pdu)
 {
     int ret;
@@ -54,8 +44,6 @@ void ResHandler::findUser(PDU *pdu)
         QMessageBox::information(Index::getInstance().getFriend(),"查找用户","该用户不存在");
     }
 }
-
-// 在线用户列表响应：从caMsg中解析出所有在线用户名（每32字节一个）
 void ResHandler::onlineUser(PDU *pdu)
 {
     QStringList userList;
@@ -67,7 +55,6 @@ void ResHandler::onlineUser(PDU *pdu)
     Index::getInstance().getFriend()->m_pOnlineUser->updateOnlineUser(userList); // 更新在线用户弹窗
 }
 
-// 添加好友响应：根据返回值（-1失败/0离线/2已是好友）弹窗提示
 void ResHandler::addFriend(PDU *pdu)
 {
     int ret;
@@ -183,18 +170,6 @@ void ResHandler::deldir(PDU *pdu)
     }
 }
 
-// 上传文件初始化响应：服务器准备好接收后，启动客户端上传流程
-/*void ResHandler::uploadFileInit(PDU *pdu)
-{
-    bool ret;
-    memcpy(&ret,pdu->caData,sizeof(bool));
-    if(ret){
-        Client::getInstance().startUpload();             // 服务器就绪，开始上传文件数据
-    }else{
-        QMessageBox::information(Index::getInstance().getFile(),"上传文件","上传文件失败");
-    }
-}
-  */
 // 上传文件初始化响应：根据服务器回传的offset判断 失败/秒传/正常上传
 void ResHandler::uploadFileInit(PDU *pdu)
 {
@@ -212,11 +187,9 @@ void ResHandler::uploadFileInit(PDU *pdu)
         Index::getInstance().getFile()->flushFile();  // 刷新文件列表
         return;
     }
-    // offset==0（正常）或 0<offset<大小（续传）：都走startUpload，Uploader内部seek
     Client::getInstance().m_iUploadOffset = offset;
     Client::getInstance().startUpload();
 
-    //Client::getInstance().startUpload();              // offset==0：正常从0开始上传
 }
 
 // 上传块确认：唤醒正在停等的Uploader，让它发下一块
@@ -228,29 +201,6 @@ void ResHandler::uploadFileAck(PDU *pdu)
         Client::getInstance().m_pUploader->onAck();
     }
 }
-
-// 上传文件完成响应：提示成功并刷新文件列表
-/*void ResHandler::uploadFileData(PDU *pdu)
-{
-    QMessageBox::information(Index::getInstance().getFile(),"上传文件","上传文件成功");
-    Index::getInstance().getFile()->flushFile();         // 上传完成后刷新文件列表
-}
-
-// 上传文件完成响应：根据MD5校验结果提示成功或失败
-void ResHandler::uploadFileData(PDU *pdu)
-{
-    bool ret;
-    memcpy(&ret,pdu->caData,sizeof(bool));
-    Index::getInstance().getFile()->resetUploadProgress();  // 无论成败，先复位进度条
-    if(ret){
-        QMessageBox::information(Index::getInstance().getFile(),"上传文件","上传文件成功");
-        Index::getInstance().getFile()->flushFile();     // 成功后刷新文件列表
-    }else{
-        QMessageBox::information(Index::getInstance().getFile(),"上传文件","上传文件失败：MD5校验不通过");
-    }
-}
-
-   */
 
 void ResHandler::uploadFileData(PDU *pdu)
 {
@@ -275,9 +225,7 @@ void ResHandler::uploadFileData(PDU *pdu)
     }
 }
 
-
-
-// 分享文件响应（发送端）：提示文件已分享
+// 分享文件响应
 void ResHandler::shareFile(PDU *pdu)
 {
     QMessageBox::information(Index::getInstance().getFile(),"分享文件","文件已分享");
