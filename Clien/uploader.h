@@ -1,6 +1,5 @@
 #ifndef UPLOADER_H
 #define UPLOADER_H
-// 文件上传器头文件：在独立线程中循环读取本地文件并通过信号发送数据块
 #include "protocol.h"
 
 #include <QObject>
