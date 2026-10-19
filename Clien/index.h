@@ -1,6 +1,5 @@
 #ifndef INDEX_H
 #define INDEX_H
-// 主界面（首页）头文件：使用QStackedWidget管理好友页面和文件页面
 #include "file.h"
 #include "friend.h"
 
